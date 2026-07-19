@@ -748,7 +748,9 @@
           </div>
           <div class="fld">
             <label class="lbl">Data de Nascimento</label>
-            <input type="date" id="reg-birth" class="inp" required>
+            <input type="text" id="reg-birth" class="inp" placeholder="dd/mm/aaaa"
+              oninput="maskDate(this)" inputmode="numeric" maxlength="10" autocomplete="bday" required>
+            <p class="hint">Ex: 15/03/1958</p>
           </div>
           <button type="submit" class="btn btn-primary btn-block">✅ Enviar Cadastro</button>
         </form>
@@ -885,7 +887,9 @@
       </div>
       <div class="fld">
         <label class="lbl">Data de Nascimento</label>
-        <input type="date" id="a-birth" class="inp" required>
+        <input type="text" id="a-birth" class="inp" placeholder="dd/mm/aaaa"
+          oninput="maskDate(this)" inputmode="numeric" maxlength="10" required>
+        <p class="hint">Ex: 15/03/1958</p>
       </div>
       <div class="modal-acts">
         <button type="button" onclick="closeAdd()" class="btn btn-ghost">Cancelar</button>
@@ -971,7 +975,6 @@ function initials(n) { return n.trim().split(/\s+/).map(w => w[0]).join('').slic
 
 // ─── ROTEAMENTO ──────────────────────────────────────────
 function boot() {
-  document.getElementById('reg-birth').max = new Date().toISOString().slice(0, 10);
   const p = new URLSearchParams(location.search);
   load();
   if (p.get('action') === 'add' && p.get('m')) { autoAdd(p.get('m')); return; }
@@ -1012,7 +1015,9 @@ async function handleRegister(e) {
   const btn   = e.target.querySelector('button[type=submit]');
   const name  = document.getElementById('reg-name').value.trim();
   const phone = document.getElementById('reg-phone').value.trim();
-  const birth = document.getElementById('reg-birth').value;
+
+  const birth = parseDateBR(document.getElementById('reg-birth').value);
+  if (!birth) { alert('Data de nascimento inválida. Use o formato dd/mm/aaaa.'); return; }
 
   // Puxa dados da nuvem antes de salvar para não sobrescrever outros membros
   if (fbReady()) {
@@ -1206,14 +1211,16 @@ function openEdit(id) {
   document.getElementById('edit-id').value  = id;
   document.getElementById('a-name').value   = m.name;
   document.getElementById('a-phone').value  = m.phone;
-  document.getElementById('a-birth').value  = m.birthDate;
+  document.getElementById('a-birth').value  = formatDateBR(m.birthDate);
   document.getElementById('add-ov').classList.add('show');
   document.getElementById('a-name').focus();
 }
 
 function saveMember(e) {
   e.preventDefault();
-  const d  = { name: document.getElementById('a-name').value, phone: document.getElementById('a-phone').value, birthDate: document.getElementById('a-birth').value };
+  const birthDate = parseDateBR(document.getElementById('a-birth').value);
+  if (!birthDate) { toast('❌ Data inválida. Use dd/mm/aaaa.'); return; }
+  const d  = { name: document.getElementById('a-name').value, phone: document.getElementById('a-phone').value, birthDate };
   const id = document.getElementById('edit-id').value;
   if (editing && id) { updM(id, d); toast('✅ Membro atualizado!'); }
   else               { addM(d);     toast('✅ Membro adicionado!'); }
@@ -1249,7 +1256,27 @@ function importData(e) {
   r.readAsText(f); e.target.value = '';
 }
 
-// ─── MÁSCARA DE TELEFONE ─────────────────────────────────
+// ─── MÁSCARAS ────────────────────────────────────────────
+function maskDate(inp) {
+  let v = inp.value.replace(/\D/g, '').slice(0, 8);
+  if (v.length > 4) v = v.replace(/^(\d{2})(\d{2})(\d{0,4})$/, '$1/$2/$3');
+  else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,2})$/, '$1/$2');
+  inp.value = v;
+}
+function parseDateBR(s) {
+  const parts = (s || '').split('/');
+  if (parts.length !== 3 || parts[2].length < 4) return null;
+  const [d, m, y] = parts;
+  const dt = new Date(+y, +m - 1, +d);
+  if (isNaN(dt) || dt.getFullYear() !== +y || dt.getMonth() !== +m - 1 || dt.getDate() !== +d) return null;
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+}
+function formatDateBR(s) {
+  if (!s) return '';
+  const [y, m, d] = s.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 function maskPhone(inp) {
   let v = inp.value.replace(/\D/g, '').slice(0, 11);
   if (v.length > 10)     v = v.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
