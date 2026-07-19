@@ -1003,7 +1003,7 @@ function setupDash() {
   setupSW();
   updateReminderBtn();
   load();
-  initCloudSync();
+  autoCloudSync();
   // Verifica aniversários assim que o painel abre (independente do SW)
   if (localStorage.getItem('reminders_on') === '1') {
     checkBirthdaysLocally();
@@ -1216,15 +1216,24 @@ function maskPhone(inp) {
 // ─── SINCRONIZAÇÃO EM NUVEM (Puter.js) ───────────────────
 const CLOUD_KEY = 'min60plus_members';
 
-async function initCloudSync() {
+// Chamada automaticamente no login — sem passo extra
+async function autoCloudSync() {
+  const btn = document.getElementById('cloud-btn');
+  if (btn) { btn.classList.add('syncing'); btn.innerHTML = '☁️ Sincronizando…'; }
   try {
     const signedIn = await puter.auth.isSignedIn();
-    if (signedIn) {
-      await pullFromCloud();
-      renderBday(); renderUpcoming(); renderStats(); render();
+    if (!signedIn) {
+      // Primeira vez no dispositivo: abre dialog Puter (só ocorre uma vez)
+      await puter.auth.signIn();
     }
-    updateCloudBtn(signedIn);
-  } catch {}
+    await pullFromCloud();
+    renderBday(); renderUpcoming(); renderStats(); render();
+    updateCloudBtn(true);
+  } catch {
+    // Se cancelar ou falhar, continua com dados locais
+    updateCloudBtn(false);
+  }
+  if (btn) btn.classList.remove('syncing');
 }
 
 async function pullFromCloud() {
@@ -1251,17 +1260,17 @@ async function pushToCloud() {
 async function connectCloud() {
   const btn = document.getElementById('cloud-btn');
   btn.classList.add('syncing');
-  btn.textContent = '☁️ Conectando…';
+  btn.innerHTML = '☁️ Sincronizando…';
   try {
     const signedIn = await puter.auth.isSignedIn();
     if (!signedIn) await puter.auth.signIn();
     await pullFromCloud();
     renderBday(); renderUpcoming(); renderStats(); render();
     updateCloudBtn(true);
-    toast('☁️ Dados sincronizados com sucesso!');
+    toast('☁️ Dados sincronizados!');
   } catch {
     updateCloudBtn(false);
-    toast('❌ Erro ao conectar com a nuvem.');
+    toast('❌ Erro ao sincronizar.');
   }
   btn.classList.remove('syncing');
 }
