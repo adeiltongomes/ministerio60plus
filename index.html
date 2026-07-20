@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ministério 60+ — Igreja Metodista Wesleyana de Itaquera</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --navy:    #0C2461;
@@ -1282,12 +1283,22 @@ function confirmDel() {
 
 // ─── IMPORTAR / EXPORTAR ─────────────────────────────────
 function exportData() {
-  const b = new Blob([JSON.stringify(members, null, 2)], { type: 'application/json' });
-  const u = URL.createObjectURL(b);
-  const a = document.createElement('a');
-  a.href = u; a.download = `ministerio60plus_${new Date().toISOString().slice(0, 10)}.json`;
-  a.click(); URL.revokeObjectURL(u);
-  toast('💾 Backup exportado!');
+  const rows = members.map(m => ({
+    'Nome':               m.name,
+    'Telefone':           m.phone,
+    'Data de Nascimento': fmtD(m.birthDate),
+    'Idade':              m.birthDate ? age(m.birthDate) + ' anos' : '',
+    'Mês de Aniversário': m.birthDate ? dob(m.birthDate).toLocaleString('pt-BR', { month: 'long' }) : '',
+    'Cadastrado em':      m.createdAt ? new Date(m.createdAt).toLocaleDateString('pt-BR') : ''
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{ wch: 35 }, { wch: 18 }, { wch: 20 }, { wch: 12 }, { wch: 18 }, { wch: 15 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Membros 60+');
+  XLSX.writeFile(wb, `ministerio60plus_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  toast('💾 Excel exportado!');
 }
 function importData(e) {
   const f = e.target.files[0]; if (!f) return;
