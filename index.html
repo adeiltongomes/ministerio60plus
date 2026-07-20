@@ -512,6 +512,16 @@
     .mcard-name  { font-weight: 800; font-size: .9375rem; color: var(--txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mcard-phone { font-size: .8125rem; color: var(--muted); margin-top: .125rem; }
     .mcard-dob   { font-size: .75rem; color: #94A3B8; margin-top: .25rem; }
+    .mcard-countdown {
+      display: inline-flex; align-items: center; gap: .3rem;
+      margin-top: .35rem;
+      font-size: .75rem; font-weight: 700;
+      padding: .25rem .625rem;
+      border-radius: 8px;
+    }
+    .mcard-countdown.cd-future { background: #EFF6FF; color: var(--blue); }
+    .mcard-countdown.cd-today  { background: var(--gold-l); color: var(--gold-d); }
+    .mcard-countdown.cd-past   { background: #F1F5F9; color: #64748B; }
     .mcard-badges { display: flex; flex-wrap: wrap; gap: .375rem; margin-top: .5rem; }
     .badge {
       display: inline-flex; align-items: center; gap: .25rem;
@@ -985,6 +995,11 @@ function isPastThisYear(s) {
   const b = dob(s);
   return new Date(t.getFullYear(), b.getMonth(), b.getDate()) < t;
 }
+function daysAgo(s) {
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  const b = dob(s);
+  return Math.round((t - new Date(t.getFullYear(), b.getMonth(), b.getDate())) / 86400000);
+}
 function daysUntil(s) {
   const t = new Date(); t.setHours(0, 0, 0, 0);
   const b = dob(s);
@@ -1195,6 +1210,11 @@ function render() {
             <div class="mcard-name" title="${m.name}">${m.name}</div>
             <div class="mcard-phone">📱 ${m.phone}</div>
             <div class="mcard-dob">🎂 ${fmtD(m.birthDate)} · ${age(m.birthDate)} anos</div>
+            <div class="mcard-countdown ${td ? 'cd-today' : past ? 'cd-past' : 'cd-future'}">
+              ${td   ? '🎂 Hoje é seu aniversário!'
+                : past ? `✅ Passou há ${daysAgo(m.birthDate)} dia${daysAgo(m.birthDate) === 1 ? '' : 's'}`
+                : `⏳ Faltam ${d} dia${d === 1 ? '' : 's'}`}
+            </div>
             ${badges ? `<div class="mcard-badges">${badges}</div>` : ''}
           </div>
         </div>
