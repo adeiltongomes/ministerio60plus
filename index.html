@@ -783,6 +783,19 @@
         </p>
         <form id="register-form" onsubmit="handleRegister(event)">
           <div class="fld">
+            <label class="lbl">Foto (opcional)</label>
+            <div class="photo-row">
+              <div class="photo-thumb" id="reg-photo-thumb" style="font-size:1.75rem;">📷</div>
+              <div style="display:flex;flex-direction:column;gap:.375rem;">
+                <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+                  📷 Escolher Foto
+                  <input type="file" id="reg-photo" accept="image/*" onchange="previewRegPhoto(this)" style="display:none">
+                </label>
+                <button type="button" id="reg-clear-btn" onclick="clearRegPhoto()" class="btn btn-danger btn-sm" style="display:none;">✕ Remover</button>
+              </div>
+            </div>
+          </div>
+          <div class="fld">
             <label class="lbl">Nome Completo</label>
             <input type="text" id="reg-name" class="inp" placeholder="Seu nome completo" autocomplete="name" required>
           </div>
@@ -1114,7 +1127,8 @@ async function handleRegister(e) {
     } catch {}
   }
 
-  addM({ name, phone, birthDate: birth });
+  addM({ name, phone, birthDate: birth, photo: regPendingPhoto });
+  regPendingPhoto = null;
   document.getElementById('reg-form-wrap').style.display = 'none';
   document.getElementById('reg-success').classList.add('show');
 }
@@ -1384,6 +1398,40 @@ function importData(e) {
 }
 
 // ─── FOTO ────────────────────────────────────────────────
+let regPendingPhoto = null;
+
+function resizePhoto(file, cb) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 160;
+      const ctx = canvas.getContext('2d');
+      const size = Math.min(img.width, img.height);
+      ctx.drawImage(img, (img.width-size)/2, (img.height-size)/2, size, size, 0, 0, 160, 160);
+      cb(canvas.toDataURL('image/jpeg', 0.75));
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function previewRegPhoto(input) {
+  if (!input.files[0]) return;
+  resizePhoto(input.files[0], b64 => {
+    regPendingPhoto = b64;
+    const thumb = document.getElementById('reg-photo-thumb');
+    thumb.innerHTML = `<img src="${b64}">`;
+    document.getElementById('reg-clear-btn').style.display = '';
+  });
+}
+function clearRegPhoto() {
+  regPendingPhoto = null;
+  document.getElementById('reg-photo').value = '';
+  document.getElementById('reg-photo-thumb').innerHTML = '📷';
+  document.getElementById('reg-clear-btn').style.display = 'none';
+}
 function setPhotoThumb(src, fallback) {
   const thumb = document.getElementById('a-photo-thumb');
   const clearBtn = document.getElementById('clear-photo-btn');
@@ -1397,25 +1445,11 @@ function setPhotoThumb(src, fallback) {
 }
 
 function previewPhoto(input) {
-  const f = input.files[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = 160;
-      const ctx = canvas.getContext('2d');
-      const size = Math.min(img.width, img.height);
-      const ox = (img.width - size) / 2;
-      const oy = (img.height - size) / 2;
-      ctx.drawImage(img, ox, oy, size, size, 0, 0, 160, 160);
-      pendingPhoto = canvas.toDataURL('image/jpeg', 0.75);
-      setPhotoThumb(pendingPhoto, '');
-    };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(f);
+  if (!input.files[0]) return;
+  resizePhoto(input.files[0], b64 => {
+    pendingPhoto = b64;
+    setPhotoThumb(b64, '');
+  });
 }
 
 function clearPhoto() {
