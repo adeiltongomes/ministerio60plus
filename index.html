@@ -521,6 +521,24 @@
     }
     .badge-bday { background: var(--gold-l); color: var(--gold-d); border: 1px solid rgba(217,119,6,.2); }
     .badge-soon { background: var(--grn-l);  color: #065F46;       border: 1px solid rgba(5,150,105,.2); }
+    .badge-past { background: #F1F5F9; color: #64748B; border: 1px solid #CBD5E1; }
+
+    /* Card — aniversário passado */
+    .mcard.is-past { background: #F8FAFC; border-color: #E2E8F0; }
+    .mcard.is-past .avatar { background: linear-gradient(135deg, #94A3B8, #CBD5E1); }
+
+    /* Card — aniversário próximo (pisca) */
+    @keyframes pulse-ring {
+      0%   { box-shadow: var(--sh), 0 0 0 0 rgba(26,86,219,.55); }
+      70%  { box-shadow: var(--sh), 0 0 0 9px rgba(26,86,219,.0); }
+      100% { box-shadow: var(--sh), 0 0 0 0 rgba(26,86,219,.0); }
+    }
+    @keyframes badge-blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .65; transform: scale(1.07); }
+    }
+    .mcard.is-soon { border-color: var(--blue); animation: pulse-ring 1.8s ease-out infinite; }
+    .badge-soon    { animation: badge-blink 1.4s ease-in-out infinite; }
 
     .mcard-foot { display: flex; gap: .5rem; padding-top: .875rem; border-top: 1px solid #F1F5F9; flex-wrap: wrap; }
 
@@ -961,6 +979,11 @@ function delM(id) { members = members.filter(m => m.id !== id); save(); }
 function dob(s)       { const [y, mo, d] = s.split('-'); return new Date(+y, +mo - 1, +d); }
 function isToday(s)   { const t = new Date(), b = dob(s); return b.getMonth() === t.getMonth() && b.getDate() === t.getDate(); }
 function isMonth(s)   { return dob(s).getMonth() === new Date().getMonth(); }
+function isPastThisYear(s) {
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  const b = dob(s);
+  return new Date(t.getFullYear(), b.getMonth(), b.getDate()) < t;
+}
 function daysUntil(s) {
   const t = new Date(); t.setHours(0, 0, 0, 0);
   const b = dob(s);
@@ -1132,9 +1155,10 @@ function render() {
     return matchQ && matchF;
   });
   list.sort((a, b) => {
-    const aT = isToday(a.birthDate) ? 0 : 1;
-    const bT = isToday(b.birthDate) ? 0 : 1;
-    if (aT !== bT) return aT - bT;
+    const rank = m => isToday(m.birthDate) ? 0 : (daysUntil(m.birthDate) <= 7 ? 1 : (isPastThisYear(m.birthDate) ? 3 : 2));
+    const ra = rank(a), rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    if (ra === 1) return daysUntil(a.birthDate) - daysUntil(b.birthDate);
     return a.name.localeCompare(b.name, 'pt-BR');
   });
 
@@ -1156,12 +1180,14 @@ function render() {
     const td   = isToday(m.birthDate);
     const d    = daysUntil(m.birthDate);
     const soon = !td && d <= 7;
+    const past = !td && isPastThisYear(m.birthDate);
     let badges = '';
     if (td)   badges += `<span class="badge badge-bday">🎂 Aniversário hoje!</span>`;
-    if (soon) badges += `<span class="badge badge-soon">🎉 Em ${d} ${d === 1 ? 'dia' : 'dias'}</span>`;
+    if (soon) badges += `<span class="badge badge-soon">🎉 Em ${d} ${d === 1 ? 'dia' : 'dias'}!</span>`;
+    if (past) badges += `<span class="badge badge-past">✅ Já aniversariou</span>`;
 
     return `
-      <div class="mcard${td ? ' is-bday' : ''}">
+      <div class="mcard${td ? ' is-bday' : soon ? ' is-soon' : past ? ' is-past' : ''}">
         <div class="mcard-head">
           <div class="avatar">${initials(m.name)}</div>
           <div class="mcard-info">
